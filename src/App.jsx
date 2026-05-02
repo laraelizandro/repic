@@ -86,12 +86,21 @@ async function evaluarConIA(transcripcion) {
     body: JSON.stringify({ transcripcion }),
   });
 
+  const text = await response.text();
+
   if (!response.ok) {
-    const err = await response.json().catch(() => ({}));
-    throw new Error(err.error || `Error ${response.status}`);
+    let msg = "Error " + response.status;
+    try { const j = JSON.parse(text); msg = j.error || msg; } catch {}
+    throw new Error(msg);
   }
 
-  return await response.json();
+  try {
+    const cleaned = text.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    return JSON.parse(cleaned);
+  } catch (e) {
+    console.error("Respuesta no-JSON:", text.substring(0, 200));
+    throw new Error("La IA no devolvió JSON válido. Intenta de nuevo.");
+  }
 }
 
 // ─── UI COMPONENTS ───
@@ -279,7 +288,7 @@ function VistaEvaluar({ captadores, historial, setHistorial }) {
       r.evaluaciones.forEach((e) => { cals[e.id] = e.cal; justs[e.id] = e.just; });
       setIaRes({ calificaciones: cals, justificaciones: justs, cuadrante: r.cuadrante || null });
       setPaso(3);
-    } catch (err) { console.error(err); setError("Error al evaluar. Verifica tu conexión."); }
+    } catch (err) { console.error(err); setError(err.message || "Error al evaluar. Verifica tu conexión."); }
     setEvaluando(false);
   };
 
