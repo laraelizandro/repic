@@ -1,60 +1,19 @@
-exports.handler = async function(event, context) {
+exports.handler = async function(event) {
   var headers = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Content-Type": "application/json"
   };
 
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers: headers, body: "" };
-  }
-
-  if (event.httpMethod !== "POST") {
-    return { statusCode: 405, headers: headers, body: JSON.stringify({ error: "Method not allowed" }) };
-  }
+  if (event.httpMethod === "OPTIONS") return { statusCode: 200, headers: headers, body: "" };
+  if (event.httpMethod !== "POST") return { statusCode: 405, headers: headers, body: JSON.stringify({ error: "Method not allowed" }) };
 
   try {
-    var requestBody = JSON.parse(event.body);
-    var transcripcion = requestBody.transcripcion;
-
-    if (!transcripcion || transcripcion.trim().length < 20) {
-      return { statusCode: 400, headers: headers, body: JSON.stringify({ error: "Transcripcion muy corta" }) };
-    }
-
+    var body = JSON.parse(event.body);
+    var transcripcion = body.transcripcion;
     var apiKey = process.env.ANTHROPIC_API_KEY;
 
-    if (!apiKey) {
-      return { statusCode: 500, headers: headers, body: JSON.stringify({ error: "API key no configurada en Netlify" }) };
-    }
-
-    var promptText = "Eres el evaluador experto del sistema REPIC v3.1 de Inmobili Internacional, inmobiliaria en Gomez Palacio, Durango, Mexico. Tu trabajo es evaluar la calidad de una visita de captacion inmobiliaria basandote en la transcripcion de la conversacion.\n\n";
-    promptText += "CUADRANTE DE DECISIONES (sistema para decidir si captar o no):\n";
-    promptText += "1. Precio vs avaluo - el precio del dueno esta dentro del avaluo realista?\n";
-    promptText += "2. Riesgo juridico - escrituras en orden? notaria certificada?\n";
-    promptText += "3. Disposicion ganar-ganar - dueno dispuesto a negociar?\n";
-    promptText += "4. Inmobili es primera opcion? o ya tiene otra inmobiliaria?\n";
-    promptText += "Si 2 o mas factores son negativos = NO captar.\n\n";
-    promptText += "CRITERIOS DE EVALUACION:\n";
-    promptText += "1. Analisis pre-visita (peso 5%) - Investigo al propietario, zona, precios ANTES de llegar?\n";
-    promptText += "2. Conexion y confianza (peso 8%) - Genero rapport? Uso nombre del propietario?\n";
-    promptText += "3. Escucha activa (peso 8%) - Parafraseo? Hizo preguntas de profundizacion?\n";
-    promptText += "4. Resumen de confirmacion (peso 12%) - Hizo resumen tipo Dejame ver si entendi? CRITICO\n";
-    promptText += "5. Tomador de decision (peso 10%) - Pregunto quien decide? Identifico copropietarios?\n";
-    promptText += "6. Evaluacion fisica (peso 8%) - Menciono m2, recamaras, estado, mejoras?\n";
-    promptText += "7. Educacion valor avaluo (peso 8%) - Explico calculo de valor? Educo sobre sobrevalorar?\n";
-    promptText += "8. Propuesta desglosada (peso 10%) - Presento precio neto + honorarios con transparencia?\n";
-    promptText += "9. Paquetes de servicio (peso 5%) - Ofrecio paquetes diferenciados 5%, 6%, 7%?\n";
-    promptText += "10. Manejo de objeciones (peso 8%) - Respondio objeciones con datos sin presionar?\n";
-    promptText += "11. Pregunta de cierre (peso 5%) - Pidio compromiso directo?\n";
-    promptText += "12. Documentacion en campo (peso 5%) - Tomo fotos, midio, recopilo documentos?\n";
-    promptText += "13. Analisis post-visita (peso 5%) - Grabo conclusion? Aplico Cuadrante de Decisiones?\n\n";
-    promptText += "ESCALA: 1=No lo hizo | 2=Muy deficiente | 3=Aceptable pero incompleto | 4=Bien hecho | 5=Excepcional\n";
-    promptText += "Si algo NO se menciono en la transcripcion = 1. Se justo pero exigente.\n\n";
-    promptText += "Responde UNICAMENTE con JSON valido, sin backticks, sin texto adicional:\n";
-    promptText += "{\"evaluaciones\":[{\"id\":1,\"cal\":3,\"just\":\"razon breve\"},{\"id\":2,\"cal\":4,\"just\":\"razon breve\"},...hasta el 13],\"cuadrante\":{\"precioAvaluo\":\"ok/riesgo/na\",\"riesgoJuridico\":\"ok/riesgo/na\",\"ganarGanar\":\"ok/riesgo/na\",\"primeraOpcion\":\"ok/riesgo/na\",\"decision\":\"CAPTAR/NO CAPTAR/PENDIENTE\",\"razon\":\"explicacion breve\"}}\n\n";
-    promptText += "TRANSCRIPCION DE LA VISITA:\n";
-    promptText += transcripcion;
+    if (!apiKey) return { statusCode: 500, headers: headers, body: JSON.stringify({ error: "No API key configurada" }) };
 
     var response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -66,23 +25,20 @@ exports.handler = async function(event, context) {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1500,
-        messages: [{ role: "user", content: promptText }]
+        messages: [{
+          role: "user",
+          content: "Eres evaluador REPIC v3.1 de Inmobili Internacional, inmobiliaria en Gomez Palacio, Durango, Mexico. Evaluas visitas de captacion inmobiliaria.\n\nCUADRANTE DE DECISIONES (sistema para decidir si captar o no):\n1. Precio vs avaluo - esta el precio del dueno dentro del avaluo realista?\n2. Riesgo juridico - escrituras en orden? notaria certificada?\n3. Disposicion ganar-ganar - el dueno esta dispuesto a negociar?\n4. Inmobili es primera opcion? - o ya tiene otra inmobiliaria?\nSi 2 o mas factores son negativos = NO captar.\n\nRango de precio mas vendible: $520,000 a $790,000.\n\n13 CRITERIOS con peso:\n1. Analisis pre-visita (5%) - investigo antes de llegar?\n2. Conexion y confianza (8%) - genero rapport?\n3. Escucha activa (8%) - parafraseo, preguntas de profundizacion?\n4. Resumen de confirmacion (12%) - hizo resumen tipo dejame ver si entendi? CRITICO\n5. Tomador de decision (10%) - pregunto quien decide?\n6. Evaluacion fisica (8%) - menciono m2, recamaras, estado?\n7. Educacion valor avaluo (8%) - explico calculo de valor?\n8. Propuesta desglosada (10%) - presento precio neto + honorarios?\n9. Paquetes de servicio (5%) - ofrecio paquetes diferenciados?\n10. Manejo de objeciones (8%) - respondio dudas con datos?\n11. Pregunta de cierre (5%) - pidio compromiso directo?\n12. Documentacion en campo (5%) - tomo fotos, midio, documentos?\n13. Analisis post-visita (5%) - grabo conclusion? aplico cuadrante?\n\nESCALA: 1=No lo hizo | 2=Muy deficiente | 3=Aceptable | 4=Bien | 5=Excepcional\nSi NO se menciono en la transcripcion = 1. Se justo pero exigente.\n\nResponde UNICAMENTE con JSON valido, sin backticks, sin texto extra:\n{\"evaluaciones\":[{\"id\":1,\"cal\":3,\"just\":\"razon breve\"},{\"id\":2,\"cal\":2,\"just\":\"razon\"},...hasta el 13],\"cuadrante\":{\"precioAvaluo\":\"ok\",\"riesgoJuridico\":\"ok\",\"ganarGanar\":\"ok\",\"primeraOpcion\":\"ok\",\"decision\":\"CAPTAR\",\"razon\":\"explicacion breve\"}}\n\nTRANSCRIPCION DE LA VISITA:\n" + transcripcion
+        }]
       })
     });
 
     if (!response.ok) {
-      var errorText = await response.text();
-      return { statusCode: 502, headers: headers, body: JSON.stringify({ error: "Error API: " + response.status, detail: errorText }) };
+      return { statusCode: 502, headers: headers, body: JSON.stringify({ error: "Error API " + response.status }) };
     }
 
     var data = await response.json();
-    var resultText = "";
-    for (var i = 0; i < data.content.length; i++) {
-      if (data.content[i].text) resultText += data.content[i].text;
-    }
-    resultText = resultText.replace(/```json/g, "").replace(/```/g, "").trim();
-
-    return { statusCode: 200, headers: headers, body: resultText };
+    var text = data.content.map(function(item) { return item.text || ""; }).join("");
+    return { statusCode: 200, headers: headers, body: text };
   } catch (err) {
     return { statusCode: 500, headers: headers, body: JSON.stringify({ error: "Error interno: " + err.message }) };
   }

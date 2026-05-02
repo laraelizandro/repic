@@ -56,12 +56,7 @@ function genId() { return Date.now().toString(36) + Math.random().toString(36).s
 function fmtFecha(ts) { return new Date(ts).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }); }
 function ini(n) { return n.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2); }
 
-const SEED_CAP = [
-  { id: "cap1", nombre: "Carlos Mendoza", telefono: "871-123-4567", activo: true, fechaAlta: Date.now() - 90 * 86400000 },
-  { id: "cap2", nombre: "Ana Ríos", telefono: "871-234-5678", activo: true, fechaAlta: Date.now() - 60 * 86400000 },
-  { id: "cap3", nombre: "Jorge Valenzuela", telefono: "871-345-6789", activo: true, fechaAlta: Date.now() - 45 * 86400000 },
-  { id: "cap4", nombre: "Lucía Hernández", telefono: "871-456-7890", activo: true, fechaAlta: Date.now() - 30 * 86400000 },
-];
+const SEED_CAP = [];
 
 function genDemo(caps) {
   const h = {};
