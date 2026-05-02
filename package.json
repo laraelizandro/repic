@@ -1,0 +1,21 @@
+{
+  "name": "repic-pwa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "REPIC - Sistema de evaluación de captación inmobiliaria",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "netlify-cli": "^26.0.0",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.0"
+  }
+}
